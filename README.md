@@ -19,3 +19,5 @@ Use as orientation only!
 
 Most resistances are there but in some rare instances there might be a monsters data missing. If you don't get any resistances shown for a certain mob, please let me know in the issue tracker.
 Sheol A mobs do not have information on weapon type resistance bonuses yet, these need testing and should probably also be added to clopedias once known.
+
+If you find certain resistances to be way off or have proof of testing and similar to show different values, please feel free to open an issue or even make a PR.

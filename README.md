@@ -1,7 +1,7 @@
 # SheolHelper
 A windower addon for Final Fantasy XI
 
-This addon is supposed to help you on your farming sessions by displaying a segment counter, a resistance table of your current target and on-command maps (maps are work in progress).
+This addon is supposed to help you on your farming sessions by displaying a segment counter, a resistance table of your current target including cruel joke and on-command maps (maps are work in progress).
 
 This addon is for your sole convenience while farming segments. Overlays will only be shown in Odyssey.
 Try to always load before entering. You can drag segments and resistances around individually.

@@ -5,10 +5,10 @@ This addon is supposed to help you on your farming sessions by displaying a segm
 
 This addon is for your sole convenience while farming segments. Overlays will only be shown in Odyssey.
 Try to always load before entering. You can drag segments and resistances around individually.
-The resistance table is not a completely accurate representation of actual game data.
+**The resistance table is not a completely accurate representation of actual game data**.
 Segments might get lost to "lag" but will catch up if you keep killing mobs.
 This means that the last (few) mob(s) you kill in a run might not count if you lag too much.
-Use as orientation only!
+**Use as orientation only**!
 
     //shh toggle [segments/resistances/joke] : Shows/hides either info
     //shh bg [segments/resistances/all] [0-255] : Sets the alpha channel for backgrounds

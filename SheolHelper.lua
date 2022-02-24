@@ -184,7 +184,7 @@ windower.register_event('incoming chunk', function(id, data, modified, injected,
 end)
 
 windower.register_event('outgoing chunk', function(id, data, modified, injected, blocked)
-    if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 and id == 0x05B and not injected then
+    if sheolzone ~= 4 and windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 and id == 0x05B and not injected then
         local packet = packets.parse('outgoing', data)
         local new_floor
         

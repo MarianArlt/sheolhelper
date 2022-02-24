@@ -228,7 +228,7 @@ windower.register_event('zone change', function(new_id, old_id)
         
     -- odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
     -- we explicitely specify to zone from Rabao because 298 and 279 are also used by Selbina's HTMB
-    elseif new_id == 298 or new_id == 279 and old_id == 247 then
+    elseif (new_id == 298 or new_id == 279) and old_id == 247 then
         -- reset segments on entering Sheol
         segments = 0
         seg_box.segments = segments
@@ -240,7 +240,7 @@ windower.register_event('zone change', function(new_id, old_id)
         map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
 
     -- keep segments from last run displayed in Rabao (default: true, user option)
-    elseif old_id == 298 or old_id == 279 and new_id == 247 and settings.seg_box.conserve then
+    elseif (old_id == 298 or old_id == 279) and new_id == 247 and settings.seg_box.conserve then
         res_box:hide()
         seg_box.segments = segments..' (last run)'
         -- inform about user option once

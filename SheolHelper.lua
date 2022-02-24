@@ -255,7 +255,7 @@ windower.register_event('zone change', function(new_id, old_id)
 end)
 
 windower.register_event('target change', function(target_index)
-    if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 and settings.res_box.show then
+    if (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and settings.res_box.show then
         update_resistances(target_index)
     end
 end)
@@ -292,8 +292,7 @@ windower.register_event('addon command', function(command, ...)
                 res_box:hide()
                 notice("Resistances will now be hidden.")
             elseif
-                windower.ffxi.get_info().zone == 298 or
-                windower.ffxi.get_info().zone == 279 and
+                (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and
                 target and target.spawn_type == 16 and
                 target.valid_target
             then
@@ -360,7 +359,7 @@ windower.register_event('addon command', function(command, ...)
         elseif arg[1] == 'size' and not tonumber(arg[2]) then
             error("Must be an integer.")
 
-        elseif sheolzone and sheolzone ~= 4 and windower.ffxi.get_info().zone == 279 or windower.ffxi.get_info().zone == 298 then
+        elseif sheolzone and sheolzone ~= 4 and (windower.ffxi.get_info().zone == 279 or windower.ffxi.get_info().zone == 298) then
         --elseif true then
             if map and map:visible() then
                 map:hide()

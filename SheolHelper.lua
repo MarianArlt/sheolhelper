@@ -139,15 +139,22 @@ end
 -- called on target change
 function update_resistances(target_index)
     local target = windower.ffxi.get_mob_by_index(target_index)
+    local is_halo = target.name:contains('Halo')
 
     -- only redraw if the mob is different from last one
-    if target_index > 0 and target.name ~= last_target and target.spawn_type == 16 and target.valid_target then
+    if
+        target_index > 0 and not
+        is_halo and
+        target.name ~= last_target and
+        target.spawn_type == 16 and
+        target.valid_target
+    then
         build_res_strings(target, target_index)
         last_target = target.name
     end
 
     -- only show when enemy is a mob
-    if target and target.spawn_type == 16 and target.valid_target then
+    if target and target.spawn_type == 16 and target.valid_target and not is_halo then
         res_box:show()
     else
         res_box:hide()
@@ -254,7 +261,11 @@ windower.register_event('zone change', function(new_id, old_id)
 end)
 
 windower.register_event('target change', function(target_index)
-    if (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and settings.res_box.show then
+    if
+        (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and
+        sheolzone ~= 4 and
+        settings.res_box.show
+    then
         update_resistances(target_index)
     end
 end)

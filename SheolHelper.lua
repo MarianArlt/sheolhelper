@@ -66,7 +66,6 @@ local player_total = 0
 local sheolzone
 local translocators = {{1,3,5}, {1,3,6}, {1,2}}
 local map = images.new(settings.map, settings)
-local debugmap = images.new(settings.map, settings)
 
 -- when addon loaded while being in Odyssey
 if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 then

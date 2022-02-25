@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. ]]
 
 _addon.name = 'SheolHelper'
 _addon.author = 'Deridjian'
-_addon.version = 1.0
+_addon.version = 1.1
 _addon.commands = {'sheolhelper', 'sheol', 'shh'}
 
 config = require('config')

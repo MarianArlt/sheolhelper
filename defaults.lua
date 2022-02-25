@@ -73,7 +73,8 @@ local defaults = {
         },
         texture = {
             fit = false
-        }
+        },
+        path = ''
     }
 }
 return defaults

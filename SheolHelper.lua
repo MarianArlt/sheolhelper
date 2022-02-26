@@ -81,7 +81,7 @@ function center_disclaimer()
 end
 
 -- first load ever
-if settings.disclaimer.show then
+if windower.ffxi.get_info().logged_in and settings.disclaimer.show then
     disclaimer:show()
     coroutine.schedule(center_disclaimer, 0.1)
 end
@@ -163,7 +163,7 @@ end
 
 windower.register_event('incoming chunk', function(id, data, modified, injected, blocked)
     -- resting message is used for segment count besides other things like odyssey queue messages
-    if id == 0x02A and not injected then
+    if sheolzone and sheolzone ~= 4 and id == 0x02A and not injected then
         local packet = packets.parse('incoming', data)
         -- message ID is subject to change with future retail updates, usually three to the right
         -- luckily the players total is also passed here
@@ -190,7 +190,12 @@ windower.register_event('incoming chunk', function(id, data, modified, injected,
 end)
 
 windower.register_event('outgoing chunk', function(id, data, modified, injected, blocked)
-    if sheolzone ~= 4 and (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and id == 0x05B and not injected then
+    if
+        sheolzone ~= 4 and
+        (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279)
+        and id == 0x05B and not
+        injected
+    then
         local packet = packets.parse('outgoing', data)
         local new_floor
         
@@ -227,14 +232,11 @@ windower.register_event('outgoing chunk', function(id, data, modified, injected,
     end
 end)
 
-windower.register_event('zone change', function(new_id, old_id)
-    -- do nothing if zoning into Gaol
-    if sheolzone == 4 then
-        return
-        
+windower.register_event('zone change', function(new_id, old_id)        
     -- odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
     -- we explicitely specify to zone from Rabao because 298 and 279 are also used by Selbina's HTMB
-    elseif (new_id == 298 or new_id == 279) and old_id == 247 then
+    -- also exclude Sheol Gaol from mechanics
+    if (new_id == 298 or new_id == 279) and old_id == 247 and sheolzone ~= 4 then
         -- reset segments on entering Sheol
         segments = 0
         seg_box.segments = segments
@@ -245,15 +247,26 @@ windower.register_event('zone change', function(new_id, old_id)
         -- set correct map path for first floor
         map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
 
-    -- keep segments from last run displayed in Rabao (default: true, user option)
-    elseif (old_id == 298 or old_id == 279) and new_id == 247 and settings.seg_box.conserve then
-        res_box:hide()
-        seg_box.segments = segments..' (last run)'
-        -- inform about user option once
-        if settings.seg_box.disclaimer then
-            disclaimer:text('Segments from last run are by default conserved in Rabao\nYou can disable this behavior with //shh conserve [on/off]\nType //shh understood to hide this message permanently.')
+        -- if disclaimer hasn't been shown yet (addon was autoloaded on startup e.g.)
+        if settings.disclaimer.show then
             disclaimer:show()
+            coroutine.schedule(center_disclaimer, 0.1)
         end
+
+    -- leaving Walk of Echoes
+    elseif old_id == 298 or old_id == 279 then
+        -- keep segments from last run displayed in Rabao (default: true, user option)
+        if new_id == 247 and settings.seg_box.conserve and sheolzone and sheolzone ~= 4 then
+            res_box:hide()
+            seg_box.segments = segments..' (last run)'
+            -- inform about user option once
+            if settings.seg_box.disclaimer then
+                disclaimer:text('Segments from last run are by default conserved in Rabao\nYou can disable this behavior with //shh conserve [on/off]\nType //shh understood to hide this message permanently.')
+                disclaimer:show()
+            end
+        end
+        -- unset sheol zone
+        if sheolzone then sheolzone = nil end
 
     elseif seg_box:visible() or res_box:visible() then
         seg_box:hide(); res_box:hide()

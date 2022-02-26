@@ -139,7 +139,7 @@ end
 -- called on target change
 function update_resistances(target_index)
     local target = windower.ffxi.get_mob_by_index(target_index)
-    local is_halo = target.name:contains('Halo')
+    local is_halo = target and target.name:contains('Halo') or nil
 
     -- only redraw if the mob is different from last one
     if

@@ -8,7 +8,7 @@ return {
     -- Nostos mobs and NMs
     ['Amorph']   = {'Magic',    'Allergorhai','Bes','Clot','Flan','Gloios','Leech','Slime','Worm'},
     ['Aquan']    = {'Slashing', 'Brachys','Crab','Jagil','Kraken','Nerites','Pugil','Taniwha','Uragnite'},
-    ['Arcana']   = {'Piercing', 'Bendigeidfran','Bomb','Bygul','Cluster','Evil Weapon','Fornax','Harpe','Ishum','Mimic','Shara','Weapon'},
+    ['Arcana']   = {'Piercing', 'Bendigeidfran','Bomb','Bygul','Cluster','Evil Weapon','Fornax','Giant','Harpe','Ishum','Mimic','Shara','Weapon'},
     ['Beast']    = {'Piercing', 'Ailuros','Asena','Buffalo','Bugard','Chnubis','Coeurl','Dabbat al-Ard','Karakul','Kusarikku','Leopard','Manticore','Marid','Opo-opo','Ptesan Wi','Ram','Rarab','Sheep','Tiger'},
     ['Bird']     = {'Blunt',    'Aegypius','Apkallu','Bat','Bats','Bigbird','Colibri','Cockatrice','Gandji','Langmeidong','Leucippe','Megaera','Roc','Simir','Vulture','Zacatzontli','Ziz'},
     ['Demon']    = {'Piercing', 'Ahriman','Chaos Steward','Imp','Soulflayer'},

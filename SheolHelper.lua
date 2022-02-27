@@ -191,6 +191,7 @@ end)
 
 windower.register_event('outgoing chunk', function(id, data, modified, injected, blocked)
     if
+        sheolzone and
         sheolzone ~= 4 and
         (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279)
         and id == 0x05B and not

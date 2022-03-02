@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. ]]
 
 _addon.name = 'SheolHelper'
 _addon.author = 'Deridjian'
-_addon.version = 1.2
+_addon.version = 2.0
 _addon.commands = {'sheolhelper', 'sheol', 'shh'}
 
 config = require('config')
@@ -65,40 +65,81 @@ local segments = 0
 local player_total = 0
 local sheolzone
 local translocators = {{1,3,5}, {1,3,6}, {1,2}}
+local instances = {{1019,1020}, {1021,1022}, {1023,1024}}
 local map = images.new(settings.map, settings)
-
--- when addon loaded while being in Odyssey
-if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 then
-    if settings.seg_box.show then
-        seg_box.segments = segments
-        seg_box:show()
-    end
-end
 
 function center_disclaimer()
     local x, y = disclaimer:extents()
     disclaimer:pos(windower.get_windower_settings().ui_x_res/2-x/2,settings.disclaimer.pos.y); disclaimer:bg_alpha(255); disclaimer:alpha(255)
 end
 
--- first load ever
-if windower.ffxi.get_info().logged_in and settings.disclaimer.show then
-    disclaimer:show()
-    coroutine.schedule(center_disclaimer, 0.1)
+function set_up_entry()
+    -- reset segments; in case of two consecutive runs
+    segments = 0
+    seg_box.segments = segments
+    -- show segment counter (default: true, user option)
+    if settings.seg_box.show then
+        seg_box:show()
+    end
+    
+    -- set correct map path for first floor
+    map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
+
+    -- show general addon disclaimer if it hasn't yet (addon was autoloaded on startup e.g.)
+    if settings.disclaimer.show then
+        disclaimer:show()
+        center_disclaimer:schedule(0.1)
+    end
+
+    -- initiate running functions
+    res_monitor = windower.register_event('target change', print_resistances)
+    seg_monitor = windower.register_event('incoming chunk', count_segments)
+    floor_monitor = windower.register_event('outgoing chunk', watch_floor_change)
 end
 
--- called on target change
+function watch_for_entry(id, data, modified, injected, blocked)
+    -- the rabao conflux will send an NPC interaction with our character upon/before zoning that tells us the zone we'll be in (A/B/C/Gaol)
+    if id == 0x034 and not injected then
+        local packet = packets.parse('incoming', data)
+        if packet['Menu ID'] == 173 and packet['NPC'] == windower.ffxi.get_player().id then
+            local i = packet['Menu Parameters']:unpack('i', 1)
+            sheolzone = (i > 3 or i < 1) and nil or i
+        end
+    end
+end
+
+function clean_up_exit(zoned_to)
+    -- keep segments from last run displayed in Rabao (default: true, user option)
+    if settings.seg_box.conserve and zoned_to == 247 then
+        res_box:hide()
+        seg_box.segments = segments..' (last run)'
+
+        -- show disclaimer about retaining option if it hasn't yet
+        if settings.seg_box.disclaimer then
+            disclaimer:text('Segments from last run are by default conserved in Rabao\nYou can disable this behavior with //shh conserve [on/off]\nType //shh understood to hide this message permanently.')
+            disclaimer:show()
+        end
+    else
+        res_box:hide(); seg_box:hide()
+    end
+
+    -- unset sheol zone
+    sheolzone = nil
+end
+
 function build_res_strings(target, target_index)
     local name = target.name
-    local family = string.contains(name, 'Nostos') and string.gsub(name, '^%w+%s', '') or string.contains(name, 'Agon') and string.gsub(name, '^%w+%s', '') or name
+    local family = (name:find('Nostos') or name:find('Agon')) and name:gsub('^%a+%s', '') or name
     local res_string = ''
     local ele_string = ''
-    local max_ele = table.max(resistances[family])
+    local max_ele = resistances[family]:max()
     local type
 
     -- loop over mobs, find current, and get its family key
-    for k, v in pairs(types) do
+    for k, v in ipairs(types) do
         if table.find(v, family) then
             type = k
+            break
         end
     end
 
@@ -136,34 +177,35 @@ function build_res_strings(target, target_index)
     end
 end
 
--- called on target change
-function update_resistances(target_index)
-    local target = windower.ffxi.get_mob_by_index(target_index)
-    local is_halo = target and target.name:contains('Halo') or nil
-
-    -- only redraw if the mob is different from last one
-    if
-        target_index > 0 and not
-        is_halo and
-        target.name ~= last_target and
-        target.spawn_type == 16 and
-        target.valid_target
-    then
-        build_res_strings(target, target_index)
-        last_target = target.name
-    end
-
-    -- only show when enemy is a mob
-    if target and target.spawn_type == 16 and target.valid_target and not is_halo then
-        res_box:show()
-    else
-        res_box:hide()
+function print_resistances(target_index)
+    if settings.res_box.show then
+        local target = windower.ffxi.get_mob_by_index(target_index)
+        local is_halo = target and target.name:contains('Halo')
+    
+        -- only redraw if the mob is different from last one
+        if
+            target_index > 0 and not
+            is_halo and
+            target.name ~= last_target and
+            target.spawn_type == 16 and
+            target.valid_target
+        then
+            build_res_strings(target, target_index)
+            last_target = target.name
+        end
+    
+        -- only show when enemy is a mob
+        if target and target.spawn_type == 16 and target.valid_target and not is_halo then
+            res_box:show()
+        else
+            res_box:hide()
+        end
     end
 end
 
-windower.register_event('incoming chunk', function(id, data, modified, injected, blocked)
+function count_segments(id, data, modified, injected, blocked)
     -- resting message is used for segment count besides other things like odyssey queue messages
-    if sheolzone and sheolzone ~= 4 and id == 0x02A and not injected then
+    if sheolzone > 0 and sheolzone < 4 and id == 0x02A and not injected then
         local packet = packets.parse('incoming', data)
         -- message ID is subject to change with future retail updates, usually three to the right
         -- luckily the players total is also passed here
@@ -179,17 +221,10 @@ windower.register_event('incoming chunk', function(id, data, modified, injected,
             player_total = packet['Param 2']
             seg_box.segments = segments
         end
-
-    -- the rabao conflux will send an NPC interaction with our character upon/before zoning that tells us the zone we'll be in (A/B/C/Gaol)
-    elseif windower.ffxi.get_info().zone == 247 and id == 0x034 and not injected then
-        local packet = packets.parse('incoming', data)
-        if packet['Menu ID'] == 173 and packet['NPC'] == windower.ffxi.get_player().id then
-            sheolzone = packet['Menu Parameters']:unpack('i', 1)
-        end
     end
-end)
+end
 
-windower.register_event('outgoing chunk', function(id, data, modified, injected, blocked)
+function watch_floor_change(id, data, modified, injected, blocked)
     if
         sheolzone and
         sheolzone ~= 4 and
@@ -231,56 +266,55 @@ windower.register_event('outgoing chunk', function(id, data, modified, injected,
             map:path(windower.addon_path..'maps/'..sheolzone..'-'..new_floor..'.png')
         end
     end
-end)
+end
 
-windower.register_event('zone change', function(new_id, old_id)        
-    -- odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
-    -- we explicitely specify to zone from Rabao because 298 and 279 are also used by Selbina's HTMB
-    -- also exclude Sheol Gaol from mechanics
-    if (new_id == 298 or new_id == 279) and old_id == 247 and sheolzone ~= 4 then
-        -- reset segments on entering Sheol
-        segments = 0
-        seg_box.segments = segments
-        -- show segment count (default: true, user option)
-        if settings.seg_box.show then
-            seg_box:show()
-        end
-        -- set correct map path for first floor
-        map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
+function set_sheolzone_inside(id, data, modified, injected, blocked)
+    -- any NPC in range while sheolzone not set inside odyssey or selbina htmb
+    if id == 0x00E and not injected then
+        local packet = packets.parse('incoming', data)
+        local instance = bit.band(bit.rshift(windower.ffxi.get_mob_by_index(packet['Index']).id, 12), 0xFFF)
 
-        -- if disclaimer hasn't been shown yet (addon was autoloaded on startup e.g.)
-        if settings.disclaimer.show then
-            disclaimer:show()
-            coroutine.schedule(center_disclaimer, 0.1)
-        end
-
-    -- leaving Walk of Echoes
-    elseif old_id == 298 or old_id == 279 then
-        -- keep segments from last run displayed in Rabao (default: true, user option)
-        if new_id == 247 and settings.seg_box.conserve and sheolzone and sheolzone ~= 4 then
-            res_box:hide()
-            seg_box.segments = segments..' (last run)'
-            -- inform about user option once
-            if settings.seg_box.disclaimer then
-                disclaimer:text('Segments from last run are by default conserved in Rabao\nYou can disable this behavior with //shh conserve [on/off]\nType //shh understood to hide this message permanently.')
-                disclaimer:show()
+        -- find out if current instance is Sheol A, B or C
+        for k, v in ipairs(instances) do
+            if table.find(v, instance) then
+                sheolzone = k
+                break
             end
         end
-        -- unset sheol zone
-        if sheolzone then sheolzone = nil end
 
-    elseif seg_box:visible() or res_box:visible() then
-        seg_box:hide(); res_box:hide()
+        windower.unregister_event(sheolzone_fetcher) -- TO-DO: calling self from inside function...?
+    end
+end
+
+windower.register_event('load', function()
+    if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 then
+        sheolzone_fetcher = windower.register_event('incoming chunk', set_sheolzone_inside)
+        if sheolzone then
+            set_up_entry()
+        end
     end
 end)
 
-windower.register_event('target change', function(target_index)
-    if
-        (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279) and
-        sheolzone ~= 4 and
-        settings.res_box.show
-    then
-        update_resistances(target_index)
+windower.register_event('zone change', function(new_id, old_id)
+    -- when coming to Rabao start watching for Odyssey entry
+    if new_id == 247 then
+        rabao_monitor = windower.register_event('incoming chunk', watch_for_entry)
+
+    -- odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
+    -- we explicitely specify to zone from Rabao because 298 and 279 are also used by Selbina's HTMB
+    -- also exclude Sheol Gaol from mechanics
+    elseif (new_id == 298 or new_id == 279) and old_id == 247 and sheolzone then
+        set_up_entry()
+
+    -- leaving Walk of Echoes
+    elseif sheolzone then
+        windower.unregister_event(seg_monitor, res_monitor, floor_monitor)
+        clean_up_exit(new_id)
+    end
+    
+    -- stop watching for entry when leaving Rabao to anywhere else
+    if rabao_monitor and old_id == 247 then
+        windower.unregister_event(rabao_monitor)
     end
 end)
 

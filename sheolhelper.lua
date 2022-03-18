@@ -81,9 +81,6 @@ function set_up_entry()
     if settings.seg_box.show then
         seg_box:show()
     end
-    
-    -- set correct map path for first floor
-    map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
 
     -- show general addon disclaimer if it hasn't yet (addon was autoloaded on startup e.g.)
     if settings.disclaimer.show then
@@ -103,7 +100,7 @@ function watch_for_entry(id, data, modified, injected, blocked)
         local packet = packets.parse('incoming', data)
         if packet['Menu ID'] == 173 and packet['NPC'] == windower.ffxi.get_player().id then
             local i = packet['Menu Parameters']:unpack('i', 1)
-            sheolzone = (i > 3 or i < 1) and nil or i
+            sheolzone = i < 4 and i > 0 and i or nil
         end
     end
 end
@@ -132,11 +129,11 @@ function build_res_strings(target, target_index)
     local family = (name:find('Nostos') or name:find('Agon')) and name:gsub('^%a+%s', '') or name
     local res_string = ''
     local ele_string = ''
-    local max_ele = resistances[family]:max()
+    local max_ele = table.max(resistances[family])
     local type
 
     -- loop over mobs, find current, and get its family key
-    for k, v in ipairs(types) do
+    for k, v in pairs(types) do
         if table.find(v, family) then
             type = k
             break
@@ -225,13 +222,7 @@ function count_segments(id, data, modified, injected, blocked)
 end
 
 function watch_floor_change(id, data, modified, injected, blocked)
-    if
-        sheolzone and
-        sheolzone ~= 4 and
-        (windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279)
-        and id == 0x05B and not
-        injected
-    then
+    if id == 0x05B and not injected then
         local packet = packets.parse('outgoing', data)
         local new_floor
         
@@ -239,7 +230,7 @@ function watch_floor_change(id, data, modified, injected, blocked)
         if tostring(packet):contains('Conflux') then
             -- even numbered confluxes always teleport one floor down where that floor equals the confluxes number divided by two
             if packet['Option Index'] % 2 == 0 then
-                new_floor = packet['Option Index'] / 2
+                new_floor = packet['Option Index'] / 2 == 0 and 1 or packet['Option Index'] / 2
             -- odd numbered confluxes always teleport one floor up
             else
                 -- store lowest floor
@@ -269,29 +260,38 @@ function watch_floor_change(id, data, modified, injected, blocked)
 end
 
 function set_sheolzone_inside(id, data, modified, injected, blocked)
-    -- any NPC in range while sheolzone not set inside odyssey or selbina htmb
+    -- checking any NPC update in range while sheolzone is not set
     if id == 0x00E and not injected then
+
         local packet = packets.parse('incoming', data)
-        local instance = bit.band(bit.rshift(windower.ffxi.get_mob_by_index(packet['Index']).id, 12), 0xFFF)
+        local sender = windower.ffxi.get_mob_by_index(packet['Index']) and windower.ffxi.get_mob_by_index(packet['Index']).spawn_type or nil
 
-        -- find out if current instance is Sheol A, B or C
-        for k, v in ipairs(instances) do
-            if table.find(v, instance) then
-                sheolzone = k
-                break
+        if sender and sender == 16 or sender == 2 then
+            -- grab unique instance bit
+            local instance = bit.band(bit.rshift(windower.ffxi.get_mob_by_index(packet['Index']).id, 12), 0xFFF)
+            -- find out if current instance is Sheol A, B or C
+            for k, v in pairs(instances) do
+                if table.find(v, instance) then
+                    sheolzone = k
+                    map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
+                    set_up_entry()
+                    break
+                end
             end
-        end
 
-        windower.unregister_event(sheolzone_fetcher) -- TO-DO: calling self from inside function...?
+            -- stop all of this from firing over and over again since we now know what instance we are in
+            windower.unregister_event(sheolzone_fetcher)
+        end
     end
 end
 
 windower.register_event('load', function()
+    -- Sheol A, B, C, Gaol and Selbina HTMBs
     if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 then
         sheolzone_fetcher = windower.register_event('incoming chunk', set_sheolzone_inside)
-        if sheolzone then
-            set_up_entry()
-        end
+    -- Rabao
+    elseif windower.ffxi.get_info().zone == 247 then
+        rabao_monitor = windower.register_event('incoming chunk', watch_for_entry)
     end
 end)
 
@@ -300,21 +300,31 @@ windower.register_event('zone change', function(new_id, old_id)
     if new_id == 247 then
         rabao_monitor = windower.register_event('incoming chunk', watch_for_entry)
 
-    -- odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
+    -- Odyssey can be instanced in either 'Walk of Echoes [P1]' or 'Walk of Echoes [P2]'
     -- we explicitely specify to zone from Rabao because 298 and 279 are also used by Selbina's HTMB
-    -- also exclude Sheol Gaol from mechanics
-    elseif (new_id == 298 or new_id == 279) and old_id == 247 and sheolzone then
-        set_up_entry()
+    elseif old_id == 247 and (new_id == 298 or new_id == 279) then
+        -- this should be the default path when the addon was already loaded before going in
+        if sheolzone then
+            set_up_entry()
+            map:path(windower.addon_path..'maps/'..sheolzone..'-1.png')
+        -- if for whatever reason sheolzone wasn't set on entry then scan instance and set everything up if necessary
+        else
+            sheolzone_fetcher = windower.register_event('incoming chunk', set_sheolzone_inside)
+        end
+    end
 
-    -- leaving Walk of Echoes
-    elseif sheolzone then
+    -- leaving Sheol A, B or C
+    if sheolzone and (old_id == 298 or old_id == 279) then
         windower.unregister_event(seg_monitor, res_monitor, floor_monitor)
         clean_up_exit(new_id)
     end
     
-    -- stop watching for entry when leaving Rabao to anywhere else
+    -- leaving Rabao to anywhere else
     if rabao_monitor and old_id == 247 then
         windower.unregister_event(rabao_monitor)
+        if not sheolzone and seg_box:visible() then
+            seg_box:hide()
+        end
     end
 end)
 
@@ -372,14 +382,14 @@ windower.register_event('addon command', function(command, ...)
             settings:save()
             last_target = ''
         else
-            error("//shh toggle accepts either 'segments' or 'resistances'.")
+            error("Accepts either 'segments' or 'resistances'.")
         end
 
     elseif cmd == 'bg' then
         arg[2] = tonumber(arg[2])
         if arg[1] == 'all' or arg[1] == 'segments' or arg[1] == 'resistances' then
             if not arg[2] or arg[2] < 0 or arg[2] > 255 then
-                error("The value for bg transparency must be between 0 and 255.")
+                error("Transparency value must be between 0 and 255.")
             else
                 if arg[1] == 'all' or arg[1] == 'segments' then
                     settings.seg_box.bg.alpha = arg[2]
@@ -393,7 +403,7 @@ windower.register_event('addon command', function(command, ...)
                 end
             end
         else
-            error("//shh bg accepts either 'segments', 'resistances' or 'all'.")
+            error("Accepts either 'segments', 'resistances' or 'all'.")
         end
 
     elseif cmd == 'conserve' then
@@ -401,32 +411,33 @@ windower.register_event('addon command', function(command, ...)
         settings:save()
 
     elseif cmd == 'map' then
-        if arg[1] == 'center' then
+        if not sheolzone then
+            error("Must be in either Sheol A, B or C to interact with maps.")
+        elseif arg[1] == 'center' then
             map:pos_x(windower.get_windower_settings().ui_x_res / 2 - settings.map.size.width / 2)
             map:pos_y(windower.get_windower_settings().ui_y_res / 2 - settings.map.size.height / 2)
-
-        elseif arg[1] == 'size' and tonumber(arg[2]) then
-            settings.map.size.width = tonumber(arg[2])
-            settings.map.size.height = tonumber(arg[2])
-            settings:save()
-            config.reload(settings)
-            if map and map:visible() then
+        elseif arg[1] == 'size' then
+            if not tonumber(arg[2]) then
+                error("[size] must be an integer.")
+            else
+                settings.map.size.width = tonumber(arg[2])
+                settings.map.size.height = tonumber(arg[2])
                 map:size(settings.map.size.width, settings.map.size.height)
+                settings:save()
+                config.reload(settings)
             end
-
-        elseif arg[1] == 'size' and not tonumber(arg[2]) then
-            error("Must be an integer.")
-
-        elseif sheolzone and sheolzone ~= 4 and (windower.ffxi.get_info().zone == 279 or windower.ffxi.get_info().zone == 298) then
-        --elseif true then
+        elseif arg[1] == 'floor' then
+            if not tonumber(arg[2]) then
+                error("[floor] must be an integer fitting this Sheol.")
+            else
+                map:path(windower.addon_path..'maps/'..sheolzone..'-'..arg[2]..'.png')
+            end
+        else
             if map and map:visible() then
                 map:hide()
             else
                 map:show()
             end
-
-        else
-            error("Must have addon loaded before entering and be in either Sheol A, B or C to load maps.")
         end
 
     else
@@ -437,5 +448,6 @@ windower.register_event('addon command', function(command, ...)
         windower.add_to_chat(207, "//shh map : Toggle the current floor's map")
         windower.add_to_chat(207, "//shh map center : Repositions the map to the center of the screen")
         windower.add_to_chat(207, "//shh map size [size] : Sets the map to the new [size].")
+        windower.add_to_chat(207, "//shh map floor [floor] : Sets the map to reflect [floor].")
     end
 end)

@@ -204,11 +204,11 @@ function count_segments(id, data, modified, injected, blocked)
     -- resting message is used for segment count besides other things like odyssey queue messages
     if sheolzone > 0 and sheolzone < 4 and id == 0x02A and not injected then
         local packet = packets.parse('incoming', data)
-        -- message ID is subject to change with future retail updates, usually three to the right
+        -- message ID is subject to change with future retail updates; changed one to the right from March to April 2022 (40001>40002)
         -- luckily the players total is also passed here
         -- this makes it possible to prevent duplicates and account for packet loss at the same time
         -- we only count segments that also show a difference in total to exclude duplicated chunks
-        if packet['Message ID'] == 40001 and player_total ~= packet['Param 2'] then
+        if packet['Message ID'] == 40002 and player_total ~= packet['Param 2'] then
             -- make an exception if the total does not match the current count, i.e. one ore more former packets got lost
             if packet['Param 2'] - packet['Param 1'] ~= player_total and player_total ~= 0 then
                 segments = segments + packet['Param 2'] - player_total
@@ -286,10 +286,10 @@ function set_sheolzone_inside(id, data, modified, injected, blocked)
 end
 
 windower.register_event('load', function()
-    -- Sheol A, B, C, Gaol and Selbina HTMBs
+    -- addon loaded in Sheol A, B, C, Gaol and Selbina HTMBs: Scan instance
     if windower.ffxi.get_info().zone == 298 or windower.ffxi.get_info().zone == 279 then
         sheolzone_fetcher = windower.register_event('incoming chunk', set_sheolzone_inside)
-    -- Rabao
+    -- loaded in Rabao
     elseif windower.ffxi.get_info().zone == 247 then
         rabao_monitor = windower.register_event('incoming chunk', watch_for_entry)
     end

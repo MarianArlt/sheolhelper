@@ -204,11 +204,12 @@ function count_segments(id, data, modified, injected, blocked)
     -- resting message is used for segment count besides other things like odyssey queue messages
     if sheolzone > 0 and sheolzone < 4 and id == 0x02A and not injected then
         local packet = packets.parse('incoming', data)
-        -- message ID is subject to change with future retail updates; changed one to the right from March to April 2022 (40001>40002)
+        -- message ID is subject to change with future retail updates;
+        -- changed: April 2022 (40001>40002), September 2022 (40002>40005)
         -- luckily the players total is also passed here
         -- this makes it possible to prevent duplicates and account for packet loss at the same time
         -- we only count segments that also show a difference in total to exclude duplicated chunks
-        if packet['Message ID'] == 40002 and player_total ~= packet['Param 2'] then
+        if packet['Message ID'] == 40005 and player_total ~= packet['Param 2'] then
             -- make an exception if the total does not match the current count, i.e. one ore more former packets got lost
             if packet['Param 2'] - packet['Param 1'] ~= player_total and player_total ~= 0 then
                 segments = segments + packet['Param 2'] - player_total

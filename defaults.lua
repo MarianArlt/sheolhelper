@@ -36,7 +36,9 @@ local defaults = {
             bold = true
         },
         show = true,
-        joke = true
+        joke = true,
+		lightsleep = true,
+		darksleep = true
     },
     seg_box = {
         pos = {

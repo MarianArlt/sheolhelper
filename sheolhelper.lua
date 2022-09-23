@@ -58,7 +58,7 @@ Use as orientation only!
 Type '//shh understood' to remove this message permanently and '//shh h' for commands.]],
 settings.disclaimer, settings
 )
-local res_box = texts.new('${type}\n${resistances}${crueljoke}', settings.res_box, settings)
+local res_box = texts.new('${type}\n${resistances}${crueljoke} | ${lightsleep} | ${darksleep}', settings.res_box, settings)
 local seg_box = texts.new('Segments: ${segments}', settings.seg_box, settings)
 local last_target = ''
 local segments = 0
@@ -166,11 +166,19 @@ function build_res_strings(target, target_index)
 
     res_box.name = name
     res_box.type = type
-    res_box.resistances = res_string..'\n\n'..ele_string
+    res_box.resistances = res_string..'\n\n'..ele_string..'\n\n'
 
     if settings.res_box.joke then
         local color = resistances[family][4] == 0.000 and [[\cs(255, 0, 0)]] or [[\cs(0, 255, 0)]]
-        res_box.crueljoke = color..'\n\nCruel Joke'..[[\cr]]
+        res_box.crueljoke = color..'Cruel Joke'..[[\cr]]
+    end
+    if settings.res_box.lightsleep then
+        local color = resistances[family][13] == 0.000 and [[\cs(255, 0, 0)]] or [[\cs(0, 255, 0)]]
+        res_box.lightsleep = color..'Light Sleep'..[[\cr]]
+    end
+    if settings.res_box.darksleep then
+        local color = resistances[family][14] == 0.000 and [[\cs(255, 0, 0)]] or [[\cs(0, 255, 0)]]
+        res_box.darksleep = color..'Dark Sleep'..[[\cr]]
     end
 end
 
@@ -382,6 +390,24 @@ windower.register_event('addon command', function(command, ...)
             settings.res_box.joke = not settings.res_box.joke
             settings:save()
             last_target = ''
+		elseif arg[1] == 'lightsleep' then
+            if settings.res_box.lightsleep then
+                notice("Light sleep compatability will now be hidden.")
+            else
+                notice("Light sleep compatability will now be shown.")
+            end
+            settings.res_box.lightsleep = not settings.res_box.lightsleep
+            settings:save()
+            last_target = ''
+		elseif arg[1] == 'darksleep' then
+            if settings.res_box.darksleep then
+                notice("Dark sleep compatability will now be hidden.")
+            else
+                notice("Dark sleep compatability will now be shown.")
+            end
+            settings.res_box.darksleep = not settings.res_box.darksleep
+            settings:save()
+            last_target = ''
         else
             error("Accepts either 'segments' or 'resistances'.")
         end
@@ -443,7 +469,7 @@ windower.register_event('addon command', function(command, ...)
 
     else
         windower.add_to_chat(200, "SheolHelper Commands:")
-        windower.add_to_chat(207, "//shh toggle [segments/resistances/joke] : Shows/hides either info")
+        windower.add_to_chat(207, "//shh toggle [segments/resistances/joke/lightsleep/darksleep] : Shows/hides either info")
         windower.add_to_chat(207, "//shh bg [segments/resistances/all] [0-255] : Sets the alpha channel for backgrounds")
         windower.add_to_chat(207, "//shh conserve : Toggles segments being shown in Rabao after a run")
         windower.add_to_chat(207, "//shh map : Toggle the current floor's map")
